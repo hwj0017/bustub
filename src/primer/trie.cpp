@@ -10,16 +10,16 @@
 #include "common/exception.h"
 
 namespace bustub {
-std::vector<const TrieNode *> Trie::findPath(std::string_view key) const {
+auto Trie::FindPath(std::string_view key) const -> std::vector<const TrieNode *> {
   // key is not end with '\0'
   std::vector<const TrieNode *> path;
-  const TrieNode *tempNode = root_.get();
-  if (tempNode != nullptr) {
-    path.emplace_back(tempNode);
+  const TrieNode *temp_node = root_.get();
+  if (temp_node != nullptr) {
+    path.emplace_back(temp_node);
     for (auto c : key) {
-      if (auto it = tempNode->children_.find(c); it != tempNode->children_.end()) {
-        tempNode = it->second.get();
-        path.emplace_back(tempNode);
+      if (auto it = temp_node->children_.find(c); it != temp_node->children_.end()) {
+        temp_node = it->second.get();
+        path.emplace_back(temp_node);
       } else {
         break;
       }
@@ -37,13 +37,18 @@ auto Trie::Get(std::string_view key) const -> const T * {
   // Otherwise, return the value.
 
   // maybe root
-  if (key.size() > 0 && key.back() == '\0') key = key.substr(0, key.size() - 1);
-  auto path = findPath(key);
-  if (path.size() != key.size() + 1) return nullptr;
-  if (auto ptr = dynamic_cast<const TrieNodeWithValue<T> *>(path.back()); ptr == nullptr)
+  if (!key.empty() && key.back() == '\0') {
+    key = key.substr(0, key.size() - 1);
+  }
+  auto path = FindPath(key);
+  if (path.size() != key.size() + 1) {
     return nullptr;
-  else
-    return ptr->value_.get();
+  }
+  auto ptr = dynamic_cast<const TrieNodeWithValue<T> *>(path.back());
+  if (ptr == nullptr) {
+    return nullptr;
+  }
+  return ptr->value_.get();
 }
 
 template <class T>
@@ -53,28 +58,30 @@ auto Trie::Put(std::string_view key, T value) const -> Trie {
 
   // You should walk through the trie and create new nodes if necessary. If the node corresponding to the key already
   // exists, you should create a new `TrieNodeWithValue`.
-  if (key.size() > 0 && key.back() == '\0') key = key.substr(0, key.size() - 1);
-  std::vector<std::shared_ptr<TrieNode>> newNodes;
-  auto path = findPath(key);
+  if (!key.empty() && key.back() == '\0') {
+    key = key.substr(0, key.size() - 1);
+  }
+  std::vector<std::shared_ptr<TrieNode>> new_nodes;
+  auto path = FindPath(key);
   // path.size()<=key.size()+1
   for (size_t index = 0; index < key.size(); ++index) {
     if (path.size() > index) {
-      newNodes.emplace_back(std::shared_ptr<TrieNode>(path[index]->Clone()));
+      new_nodes.emplace_back(std::shared_ptr<TrieNode>(path[index]->Clone()));
     } else {
-      newNodes.emplace_back(std::make_shared<TrieNode>());
+      new_nodes.emplace_back(std::make_shared<TrieNode>());
     }
   }
   if (path.size() == key.size() + 1) {
-    newNodes.emplace_back(
+    new_nodes.emplace_back(
         std::make_shared<TrieNodeWithValue<T>>(path.back()->children_, std::make_shared<T>(std::move(value))));
   } else {
-    newNodes.emplace_back(std::make_shared<TrieNodeWithValue<T>>(std::make_shared<T>(std::move(value))));
+    new_nodes.emplace_back(std::make_shared<TrieNodeWithValue<T>>(std::make_shared<T>(std::move(value))));
   }
-  for (size_t index = newNodes.size() - 1; index > 0; --index) {
-    newNodes[index - 1]->children_.insert_or_assign(key[index - 1], std::move(newNodes[index]));
+  for (size_t index = new_nodes.size() - 1; index > 0; --index) {
+    new_nodes[index - 1]->children_.insert_or_assign(key[index - 1], std::move(new_nodes[index]));
   }
-  // newNodes must have one
-  return Trie(newNodes[0]);
+  // new_nodes must have one
+  return Trie(new_nodes[0]);
 }
 
 auto Trie::Remove(std::string_view key) const -> Trie {
@@ -84,9 +91,11 @@ auto Trie::Remove(std::string_view key) const -> Trie {
   // you should convert it to `TrieNode`. If a node doesn't have children any more, you should remove it.
 
   // if not found key
-  if (key.size() > 0 && key.back() == '\0') key = key.substr(0, key.size() - 1);
-  auto path = findPath(key);
-  if (path.size() != key.size() + 1 || path.back()->is_value_node_ == false) {
+  if (!key.empty() && key.back() == '\0') {
+    key = key.substr(0, key.size() - 1);
+  }
+  auto path = FindPath(key);
+  if (path.size() != key.size() + 1 || !path.back()->is_value_node_) {
     return Trie(root_);
   }
   // newNode number needed
@@ -94,7 +103,7 @@ auto Trie::Remove(std::string_view key) const -> Trie {
   if (path[sum - 1]->children_.empty()) {
     --sum;
     for (; sum > 0; --sum) {
-      if (path[sum - 1]->is_value_node_ == false && path[sum - 1]->children_.size() == 1) {
+      if (!path[sum - 1]->is_value_node_ && path[sum - 1]->children_.size() == 1) {
       } else {
         break;
       }
@@ -102,25 +111,25 @@ auto Trie::Remove(std::string_view key) const -> Trie {
   }
 
   if (sum <= 0) {
-    return Trie();
-  } else {
-    std::vector<std::shared_ptr<TrieNode>> newNodes;
-    for (size_t index = 0; index < sum - 1; ++index) {
-      newNodes.emplace_back(std::shared_ptr<TrieNode>(path[index]->Clone()));
-    }
-    // need to save the last node
-    if (sum == key.size() + 1)
-      newNodes.emplace_back(std::make_shared<TrieNode>(path[sum - 1]->children_));
-    else {
-      // don't need to save
-      newNodes.emplace_back(std::shared_ptr<TrieNode>(path[sum - 1]->Clone()));
-      newNodes.back()->children_.erase(key[sum - 1]);
-    }
-    for (size_t index = sum - 1; index > 0; --index) {
-      newNodes[index - 1]->children_.insert_or_assign(key[index - 1], std::move(newNodes[index]));
-    }
-    return Trie(std::move(newNodes[0]));
+    return {};
   }
+
+  std::vector<std::shared_ptr<TrieNode>> new_nodes;
+  for (size_t index = 0; index < sum - 1; ++index) {
+    new_nodes.emplace_back(std::shared_ptr<TrieNode>(path[index]->Clone()));
+  }
+  // need to save the last node
+  if (sum == key.size() + 1) {
+    new_nodes.emplace_back(std::make_shared<TrieNode>(path[sum - 1]->children_));
+  } else {
+    // don't need to save
+    new_nodes.emplace_back(std::shared_ptr<TrieNode>(path[sum - 1]->Clone()));
+    new_nodes.back()->children_.erase(key[sum - 1]);
+  }
+  for (size_t index = sum - 1; index > 0; --index) {
+    new_nodes[index - 1]->children_.insert_or_assign(key[index - 1], std::move(new_nodes[index]));
+  }
+  return Trie(std::move(new_nodes[0]));
 }
 
 // Below are explicit instantiation of template functions.

@@ -1,6 +1,5 @@
 #include "primer/trie_store.h"
 #include <algorithm>
-#include <mutex>
 #include <optional>
 #include "common/exception.h"
 #include "primer/trie.h"
@@ -17,9 +16,9 @@ auto TrieStore::Get(std::string_view key) -> std::optional<ValueGuard<T>> {
   //     root. Otherwise, return std::nullopt.
   // throw NotImplementedException("TrieStore::Get is not implemented.");
 
-  Trie root(root_);
+  Trie root;
   {
-    std::lock_guard<std::mutex> rootGuard(root_lock_);
+    std::lock_guard<std::mutex> root_guard(root_lock_);
     root = root_;
   }
   auto value = root.Get<T>(key);
@@ -34,9 +33,9 @@ void TrieStore::Put(std::string_view key, T value) {
   // You will need to ensure there is only one writer at a time. Think of how you can achieve this.
   // The logic should be somehow similar to `TrieStore::Get`.
   // throw NotImplementedException("TrieStore::Put is not implemented.");
-  std::lock_guard<std::mutex> writeGuard(write_lock_);
-  Trie root = root_.Put(std::move(key), std::move(value));
-  std::lock_guard<std::mutex> rootGuard(root_lock_);
+  std::lock_guard<std::mutex> write_guard(write_lock_);
+  Trie root = root_.Put(key, std::move(value));
+  std::lock_guard<std::mutex> root_guard(root_lock_);
   root_ = std::move(root);
 }
 
@@ -45,9 +44,9 @@ void TrieStore::Remove(std::string_view key) {
   // The logic should be somehow similar to `TrieStore::Get`.
   // throw NotImplementedException("TrieStore::Remove is not implemented.");
 
-  std::lock_guard<std::mutex> writeGuard(write_lock_);
-  Trie root = root_.Remove(std::move(key));
-  std::lock_guard<std::mutex> rootGuard(root_lock_);
+  std::lock_guard<std::mutex> write_guard(write_lock_);
+  Trie root = root_.Remove(key);
+  std::lock_guard<std::mutex> root_guard(root_lock_);
   root_ = std::move(root);
 }
 
