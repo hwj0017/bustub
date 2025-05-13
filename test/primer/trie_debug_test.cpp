@@ -1,11 +1,14 @@
 #include <fmt/format.h>
 #include <zipfian_int_distribution.h>
 #include <bitset>
+#include <cstdint>
 #include <functional>
 #include <numeric>
 #include <optional>
 #include <random>
 #include <thread>  // NOLINT
+#include <unordered_map>
+#include <unordered_set>
 
 #include "common/exception.h"
 #include "gtest/gtest.h"
@@ -18,10 +21,11 @@ namespace bustub {
 TEST(TrieDebugger, TestCase) {
   std::mt19937_64 gen(23333);
   zipfian_int_distribution<uint32_t> dis(0, 1000);
-
+  std::unordered_set<uint32_t> keys;
   auto trie = Trie();
   for (uint32_t i = 0; i < 100; i++) {
-    std::string key = fmt::format("{}", dis(gen));
+    auto tempKey = dis(gen);
+    std::string key = fmt::format("{}", tempKey);
     auto value = dis(gen);
     switch (i) {
       // Test the first 3 values from the random generator.
@@ -38,6 +42,7 @@ TEST(TrieDebugger, TestCase) {
         break;
     }
     trie = trie.Put<uint32_t>(key, value);
+    keys.insert(tempKey);
   }
 
   // Put a breakpoint here.
